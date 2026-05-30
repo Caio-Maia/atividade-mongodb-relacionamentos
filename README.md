@@ -1,176 +1,186 @@
-# Atividade MongoDB — Relacionamentos e Schema Design
+# MongoDB — Relacionamentos e Schema Design
+
+> Respostas teóricas (Parte 1) e referência de execução dos scripts práticos (Partes 2 e 3).
+
+---
+
+## Como executar
+
+```bash
+# 1. Subir o ambiente (da pasta do pré-requisito)
+cd mpti-bd-2026.1/aula-08-mongodb-relacionamentos
+docker compose --profile doc up -d
+
+# 2. Carregar o dataset base
+docker exec -i aula08-mongo mongosh < scripts/01-seed-livraria.js
+
+# 3. Executar os scripts da atividade (da raiz do repositório)
+docker exec -i aula08-mongo mongosh < scripts/02-enriquecer-dataset.js
+docker exec -i aula08-mongo mongosh < scripts/03-lookup-editora.js
+docker exec -i aula08-mongo mongosh < scripts/04-lookup-autores.js
+docker exec -i aula08-mongo mongosh < scripts/05-patterns.js
+```
+
+UI para inspeção: http://localhost:8081 (`admin`/`admin`)
 
 ---
 
 ## Parte 1 — Modelagem de relacionamentos
 
-### 1.1 — Decisões embed × referência
+### 1.1 — Coleções e decisões embed × referência
 
-#### Coleções criadas
+#### Coleções propostas
 
-- `usuarios`
-- `livros`
-- `resenhas`
-- `estantes`
-- `seguidores`
+| Coleção | Descrição |
+|---------|-----------|
+| `usuario` | Perfil, configurações e estante embutidos |
+| `livro` | Referencia `editora` e `autores` por `_id` |
+| `resenha` | Coleção separada; referencia `livro` e `usuario` |
+| `segue` | Coleção de ligação para o grafo de seguidores |
+
+> Não há coleção separada para `comentario` nem para `estante` — ambos ficam embutidos nos seus documentos pai (justificativas abaixo).
 
 ---
 
-#### Documentos de exemplo
+#### Documento de exemplo — `usuario`
 
-**`usuarios`**
 ```json
 {
-  "_id": ObjectId("aaa000000000000000000001"),
+  "_id": ObjectId("664a0001000000000000aa01"),
   "nome": "Ana Lima",
   "email": "ana@email.com",
-  "bio": "Apaixonada por ficção científica e fantasia.",
-  "foto_url": "https://cdn.exemplo.com/fotos/ana.jpg",
+  "bio": "Apaixonada por literatura brasileira.",
+  "foto_url": "https://cdn.example.com/fotos/ana.jpg",
   "configuracoes": {
-    "notificacoes_email": true,
-    "perfil_publico": true,
+    "notificacoes": true,
+    "privacidade": "publico",
     "tema": "escuro"
   },
-  "criado_em": ISODate("2024-01-10T00:00:00Z")
-}
-```
-
-**`livros`**
-```json
-{
-  "_id": ObjectId("bbb000000000000000000001"),
-  "titulo": "Fundação",
-  "autores_ids": [ObjectId("ccc000000000000000000001")],
-  "editora_id": ObjectId("ddd000000000000000000001"),
-  "ano": 1951,
-  "generos": ["Ficção Científica", "Aventura"],
-  "isbn": "978-0553293357",
-  "sinopse": "A saga da queda e reconstrução do Império Galáctico.",
-  "nota_media": 4.7,
-  "total_resenhas": 1284,
-  "resenhas_recentes": [
-    {
-      "resenha_id": ObjectId("eee000000000000000000001"),
-      "usuario_nome": "Ana Lima",
-      "nota": 5,
-      "texto": "Obra-prima absoluta.",
-      "data": ISODate("2025-05-01T00:00:00Z")
-    }
+  "data_cadastro": "2024-01-15T10:00:00Z",
+  "estante": [
+    { "livro_id": ObjectId("..."), "status": "lido",      "data": "2024-03-01" },
+    { "livro_id": ObjectId("..."), "status": "lendo",     "data": "2024-05-10" },
+    { "livro_id": ObjectId("..."), "status": "quero ler", "data": "2024-05-20" }
   ]
 }
 ```
 
-**`resenhas`**
+---
+
+#### Documento de exemplo — `livro`
+
 ```json
 {
-  "_id": ObjectId("eee000000000000000000001"),
-  "livro_id": ObjectId("bbb000000000000000000001"),
-  "livro_titulo": "Fundação",
-  "usuario_id": ObjectId("aaa000000000000000000001"),
-  "usuario_nome": "Ana Lima",
+  "_id": ObjectId("664a0002000000000000bb01"),
+  "title": "O Cortiço",
+  "editora": ObjectId("664a0003000000000000cc01"),
+  "autores": [ObjectId("664a0004000000000000dd01")],
+  "ano": 1890,
+  "generos": ["romance", "naturalismo"],
+  "isbn": "978-85-359-0277-4",
+  "sinopse": "Retrato da sociedade carioca do século XIX."
+}
+```
+
+---
+
+#### Documento de exemplo — `resenha`
+
+```json
+{
+  "_id": ObjectId("664a0005000000000000ee01"),
+  "livro_id": ObjectId("664a0002000000000000bb01"),
+  "usuario_id": ObjectId("664a0001000000000000aa01"),
   "nota": 5,
-  "texto": "Obra-prima absoluta. Asimov construiu um universo inteiro com precisão científica e narrativa envolvente.",
+  "texto": "Obra-prima da literatura brasileira!",
+  "data": "2024-04-10T14:30:00Z",
   "curtidas": 42,
-  "data": ISODate("2025-05-01T00:00:00Z"),
   "comentarios": [
     {
-      "usuario_id": ObjectId("aaa000000000000000000002"),
-      "usuario_nome": "Bruno Costa",
-      "texto": "Concordo totalmente!",
-      "data": ISODate("2025-05-02T00:00:00Z")
+      "usuario_id": ObjectId("664a0001000000000000aa02"),
+      "texto": "Concordo plenamente!",
+      "data": "2024-04-11T09:00:00Z"
     }
   ]
 }
 ```
 
-**`estantes`**
-```json
-{
-  "_id": ObjectId("fff000000000000000000001"),
-  "usuario_id": ObjectId("aaa000000000000000000001"),
-  "livro_id": ObjectId("bbb000000000000000000001"),
-  "status": "lido",
-  "adicionado_em": ISODate("2025-03-15T00:00:00Z"),
-  "terminado_em": ISODate("2025-04-20T00:00:00Z")
-}
-```
+---
 
-**`seguidores`**
+#### Documento de exemplo — `segue` (coleção de ligação)
+
 ```json
 {
-  "_id": ObjectId("ggg000000000000000000001"),
-  "follower_id": ObjectId("aaa000000000000000000002"),
-  "followed_id": ObjectId("aaa000000000000000000001"),
-  "criado_em": ISODate("2025-01-20T00:00:00Z")
+  "_id": ObjectId("664a0006000000000000ff01"),
+  "seguidor_id": ObjectId("664a0001000000000000aa01"),
+  "seguido_id":  ObjectId("664a0001000000000000aa02"),
+  "data": "2024-02-20T08:00:00Z"
 }
 ```
 
 ---
 
-#### Decisões por relacionamento
+#### Justificativas
 
-**(a) Usuário ↔ foto/perfil/configurações — 1:1 → EMBED**
+**(a) Usuário ↔ foto/perfil/configurações — `EMBED`**
 
-Foto, bio e configurações são sempre lidos junto com o usuário (ex.: cabeçalho do perfil), então buscá-los em documento separado adicionaria uma viagem extra ao banco sem nenhum benefício. O relacionamento é 1:1 e os dados são relativamente estáticos — configurações mudam esporadicamente —, eliminando o risco de crescimento que tornaria o documento volumoso. O conjunto de campos é pequeno e bem longe do limite de 16 MB do BSON.
+Relacionamento 1:1 cujos dados são sempre lidos juntos ao abrir qualquer tela do usuário. Foto, bio e configurações têm tamanho previsível e estável (alguns kB no máximo). Criar uma coleção separada adicionaria um `$lookup` em toda leitura sem nenhum benefício: o dado não é compartilhado com outros documentos nem possui ciclo de vida independente.
 
-**(b) Resenha ↔ comentários — 1:poucos a 1:muitos → EMBED (com cap)**
+**(b) Resenha ↔ comentários — `EMBED` (limitado)**
 
-Comentários são invariavelmente exibidos junto com a resenha: usuário que abre uma resenha espera ver os comentários imediatamente, sem segundo round-trip. Na imensa maioria dos casos a cardinalidade é baixa (5–50 comentários); embarcar esse array não cresce o documento de forma preocupante. Caso uma resenha ultrapasse ~50 comentários (raro), o padrão **Outlier** pode ser aplicado: embarca-se os N mais recentes e o excesso vai para uma coleção `comentarios_overflow`.
+Comentários fazem sentido apenas no contexto da resenha e são sempre exibidos juntos a ela. A cardinalidade típica é "poucos" (1:3–20); embutir os comentários elimina a necessidade de join e simplifica a leitura. Para resenhas virais com centenas de comentários, aplica-se o Subset Pattern: embutir apenas os N mais recentes e paginar o restante numa coleção separada.
 
-**(c) Livro ↔ resenhas — 1:muitos (pode explodir) → REFERÊNCIA**
+**(c) Livro ↔ resenhas — `REFERÊNCIA` (coleção `resenha`)**
 
-Um best-seller pode ter centenas de milhares de resenhas; embarcar todas dentro do documento do livro violaria o limite de 16 MB em pouco tempo. Resenhas são escritas por usuários diferentes e de forma independente — atualizar um array embarcado geraria lock no documento inteiro a cada nova resenha. Por isso, resenhas ficam em coleção própria (`resenhas`) com campo `livro_id`; o livro mantém apenas um subconjunto das mais recentes (Subset Pattern, ver 3.2) e contadores computados (ver 3.3).
+Um best-seller pode acumular centenas de milhares de resenhas. Embutir todas dentro do documento `livro` estouraria rapidamente o limite BSON de 16 MB. Além disso, cada resenha possui ciclo de vida próprio — recebe curtidas, comentários e pode ser editada — tornando a atualização de documentos embutidos cara e sujeita a conflitos. A coleção separada permite paginação eficiente e escala linearmente.
 
-**(d) Usuário ↔ livros nas estantes — N:N → COLEÇÃO DE LIGAÇÃO (`estantes`)**
+**(d) Usuário ↔ livros nas estantes — `EMBED` (dentro de `usuario`)**
 
-Um usuário pode ter centenas ou milhares de livros nas estantes, e um livro pode estar na estante de milhões de usuários — guardar arrays em ambos os lados criaria documentos volumosos e problemas de sincronização. A coleção de ligação carrega metadado próprio (`status`, `adicionado_em`, `terminado_em`) que não pertence nem ao usuário nem ao livro. Índices em `usuario_id` e `livro_id` permitem consultar "todos os livros de um usuário" e "todos os usuários que têm este livro" com igual eficiência.
+A estante é intrinsecamente pessoal e acessada toda vez que o perfil do usuário é carregado. O array de entradas `{ livro_id, status, data }` tem crescimento razoável (centenas de livros no máximo para usuários assíduos), bem abaixo do limite de 16 MB. Embutir evita join e mantém o padrão "carregar o perfil = uma query".
 
-**(e) Usuário ↔ usuários (seguir) — N:N → COLEÇÃO DE LIGAÇÃO (`seguidores`)**
+**(e) Usuário ↔ usuários (seguir) — `COLEÇÃO DE LIGAÇÃO` (`segue`)**
 
-Guardar arrays de IDs dentro do documento do usuário funciona enquanto a cardinalidade é baixa, mas quebra com outliers (celebridades com milhões de seguidores ultrapassariam o limite BSON). A coleção de ligação com campos `(follower_id, followed_id)` resolve o problema de escala: índice em `follower_id` responde "quem eu sigo"; índice em `followed_id` responde "quem me segue". Não há custo de sincronização de dois arrays, pois cada aresta existe em apenas um documento.
-
----
-
-### 1.2 — Cardinalidade que muda a decisão (Livro ↔ Resenhas)
-
-**Livro comum (dezenas de resenhas)**
-
-Com poucas dezenas de resenhas, é tecnicamente viável embarcar o array diretamente no documento do livro. O tamanho total permanece bem abaixo de 16 MB e a leitura da página do livro retorna tudo em um único documento. Contudo, mesmo neste caso, updates concorrentes de usuários distintos geram contenção no documento — por isso a referência já é preferível desde o início.
-
-**Best-seller (centenas de milhares de resenhas)**
-
-Um array de centenas de milhares de resenhas explodiria o documento em megabytes, ultrapassando o limite BSON e tornando a leitura do livro extremamente cara (trafegar todos os dados da rede só para exibir o título e a capa). Além disso, cada nova resenha forçaria a reescrita de um documento gigante.
-
-**Padrão que resolve:** **Subset Pattern** (ver Parte 3.2). O documento `livro` embarca apenas as 3–5 resenhas mais recentes (o subconjunto relevante para a landing page) e um contador `total_resenhas`. A tela "ver todas as resenhas" faz uma busca paginada na coleção `resenhas` filtrada por `livro_id`, sem tocar no documento do livro.
+Detalhado em 1.3 abaixo.
 
 ---
 
-### 1.3 — N:N: de que lado guardar a referência? (Seguir)
+### 1.2 — Cardinalidade que muda a decisão
 
-A melhor decisão é usar uma **coleção de ligação** `seguidores` com documentos `{ follower_id, followed_id, criado_em }`.
+Para o item (c) — Livro ↔ resenhas:
 
-Guardar um array de IDs dentro do documento do usuário (seja no lado "quem segue" ou "quem é seguido") funciona para cardinalidades pequenas, mas falha com outliers: um usuário com 10 milhões de seguidores teria um array de ObjectIds de ~120 MB, muito além do limite BSON de 16 MB. Guardar em ambos os lados exigiria duas escritas atômicas por ação de seguir/deixar de seguir, introduzindo risco de inconsistência se uma das escritas falhar. A coleção de ligação elimina esses problemas: cada aresta é um único documento pequeno; um índice em `follower_id` responde "quem eu sigo" em O(log n); um índice em `followed_id` responde "quem me segue" com a mesma eficiência; e a operação de seguir/deixar de seguir é uma única escrita atômica.
+**Livro comum** (dezenas de resenhas): a tela principal do livro pode embutir as 3 mais recentes diretamente no documento `livro` (campo `resenhas_top`), evitando um `$lookup` no hot path. O restante fica na coleção `resenha`, consultada apenas na tela "ver todas".
+
+**Best-seller** (centenas de milhares de resenhas): embutir qualquer quantidade de resenhas no documento do livro é inviável — o documento cresceria até estourar os 16 MB. Toda leitura de resenhas vem da coleção separada, com paginação.
+
+O padrão que resolve o segundo caso é o **Subset Pattern**: o documento `livro` carrega apenas `resenhas_top` (subconjunto quente) e um contador `resenhas_count`. A tela de listagem principal não precisa de query extra; somente "ver todas" dispara uma segunda query na coleção `resenha`. Dessa forma, o tamanho do documento `livro` é sempre limitado, independente do sucesso do livro.
+
+---
+
+### 1.3 — N:N: de que lado guardar a referência?
+
+A melhor solução é uma **coleção de ligação** `segue { seguidor_id, seguido_id, data }` com índice composto nos dois campos.
+
+- **Outliers**: um usuário com milhões de seguidores não infla o documento de ninguém — cada aresta é um documento pequeno e independente. Guardar um array de IDs dentro do `usuario` seguido chegaria rapidamente a dezenas de MB, estourando o limite BSON.
+- **"Quem eu sigo"**: `db.segue.find({ seguidor_id: meuId })` — índice em `seguidor_id` resolve em O(log n).
+- **"Quem me segue"**: `db.segue.find({ seguido_id: meuId })` — índice em `seguido_id` resolve em O(log n).
+- **Sincronização**: existe apenas um documento por aresta; não há dois arrays para manter coerentes. Uma exclusão de seguimento é um único `deleteOne` na coleção `segue`, sem risco de inconsistência.
+- **Metadados**: a coleção de ligação permite armazenar `data` do follow e outros atributos da relação futuramente.
 
 ---
 
 ## Parte 2 — `$lookup` e agregação
 
-Os scripts estão na pasta `scripts/`:
+Scripts: `scripts/02-enriquecer-dataset.js`, `scripts/03-lookup-editora.js`, `scripts/04-lookup-autores.js`
 
-- **`02-enriquecer-dataset.js`** — insere 4 livros na coleção `livro` referenciando editoras e autores existentes pelo `_id`.
-- **`03-lookup-editora.js`** — lista todos os livros com nome e cidade da editora.
-- **`04-lookup-autores.js`** — lista todos os livros com o array de nomes dos autores.
-
-Para executar:
-```bash
-docker exec -i aula08-mongo mongosh livraria < scripts/02-enriquecer-dataset.js
-docker exec -i aula08-mongo mongosh livraria < scripts/03-lookup-editora.js
-docker exec -i aula08-mongo mongosh livraria < scripts/04-lookup-autores.js
-```
+Os scripts são auto-documentados com `print()` e `printjson()`. Execute-os na ordem indicada e compare a saída com os comentários no início de cada arquivo.
 
 ---
 
 ## Parte 3 — Schema Design Patterns
+
+Script: `scripts/05-patterns.js` (banco `rede_leitura`).
+
+---
 
 ### 3.1 — Extended Reference
 
@@ -178,146 +188,117 @@ docker exec -i aula08-mongo mongosh livraria < scripts/04-lookup-autores.js
 
 ```json
 {
-  "_id": ObjectId("eee000000000000000000001"),
-  "livro_id": ObjectId("bbb000000000000000000001"),
-  "livro_titulo": "Fundação",
-  "usuario_id": ObjectId("aaa000000000000000000001"),
+  "_id": "r1",
+  "livro_id": "livro_ocortico",
+  "usuario_id": "usuario_ana",
+  "livro_titulo": "O Cortico",
   "usuario_nome": "Ana Lima",
   "nota": 5,
-  "texto": "Obra-prima absoluta.",
+  "texto": "Obra-prima da literatura brasileira.",
+  "data": "2024-04-10",
   "curtidas": 42,
-  "data": ISODate("2025-05-01T00:00:00Z")
-}
-```
-
-**Justificativa:** O título do livro é imutável na prática (livros não mudam de título após publicação) e o nome de exibição do usuário muda raramente. Duplicar esses dois campos elimina dois `$lookup` na leitura do feed de resenhas — a operação mais frequente da aplicação. O campo **não duplicado** é `usuario.foto_url`: fotos de perfil são atualizadas com frequência moderada e, se duplicadas em cada resenha do usuário, exigiriam um update em potencialmente milhares de documentos a cada troca de foto — custo desproporcional ao ganho.
-
----
-
-### 3.2 — Subset Pattern
-
-**Documento `livros` com subconjunto de resenhas:**
-
-```json
-{
-  "_id": ObjectId("bbb000000000000000000001"),
-  "titulo": "Fundação",
-  "autores_ids": [ObjectId("ccc000000000000000000001")],
-  "editora_id": ObjectId("ddd000000000000000000001"),
-  "ano": 1951,
-  "generos": ["Ficção Científica"],
-  "isbn": "978-0553293357",
-  "sinopse": "A saga da queda e reconstrução do Império Galáctico.",
-  "nota_media": 4.7,
-  "total_resenhas": 1284,
-  "resenhas_recentes": [
-    {
-      "resenha_id": ObjectId("eee000000000000000000001"),
-      "usuario_nome": "Ana Lima",
-      "nota": 5,
-      "texto": "Obra-prima absoluta.",
-      "data": ISODate("2025-05-01T00:00:00Z")
-    },
-    {
-      "resenha_id": ObjectId("eee000000000000000000002"),
-      "usuario_nome": "Bruno Costa",
-      "nota": 4,
-      "texto": "Leitura densa mas recompensadora.",
-      "data": ISODate("2025-04-28T00:00:00Z")
-    },
-    {
-      "resenha_id": ObjectId("eee000000000000000000003"),
-      "usuario_nome": "Clara Dias",
-      "nota": 5,
-      "texto": "Referência obrigatória do gênero.",
-      "data": ISODate("2025-04-25T00:00:00Z")
-    }
+  "comentarios": [
+    { "usuario_id": "usuario_bob", "texto": "Concordo plenamente!", "data": "2024-04-11" }
   ]
 }
 ```
 
-**Como funciona a tela "ver todas as resenhas":** A landing page do livro exibe as 3 resenhas embarcadas sem nenhum acesso adicional ao banco. Quando o usuário clica em "ver todas as resenhas", a aplicação faz uma busca paginada na coleção `resenhas` com o filtro `{ livro_id: <id> }` e ordenação por data decrescente, buscando apenas os dados necessários para aquela página.
+`livro_titulo` e `usuario_nome` são estáveis o suficiente: títulos de livros não mudam após publicação, e nomes de exibição raramente são alterados — se mudarem, um `updateMany` propaga a correção em batch, custo aceitável para eventos raros. Campo **não duplicado**: `nota_media` do livro muda a cada nova resenha; propagá-la em cada escrita de resenha seria custoso e propenso a inconsistências.
 
 ---
 
-### 3.3 — Computed Pattern
+### 3.2 — Subset
 
-**Documento `livros` com campos computados:**
+**Documento `livro` com subconjunto de resenhas:**
 
 ```json
 {
-  "_id": ObjectId("bbb000000000000000000001"),
-  "titulo": "Fundação",
-  "nota_media": 4.7,
-  "total_resenhas": 1284
+  "_id": "livro_ocortico",
+  "title": "O Cortico",
+  "autores": ["Alencas Jr."],
+  "ano": 1890,
+  "total_resenhas": 1284,
+  "resenhas_top": [
+    { "usuario_nome": "Ana Lima",   "nota": 5, "texto": "Obra-prima!",           "data": "2024-04-10" },
+    { "usuario_nome": "Carlos Rui", "nota": 4, "texto": "Linguagem densa, vale.","data": "2024-03-20" },
+    { "usuario_nome": "Bia Costa",  "nota": 5, "texto": "Li de uma vez so.",     "data": "2024-02-14" }
+  ]
 }
 ```
 
-**`updateOne` executado a cada nova resenha (ex.: nota = 5):**
+A tela principal do livro carrega as 3 resenhas embutidas em uma única query — sem `$lookup` e sem custo extra, independente do total de resenhas. A tela "ver todas as resenhas" dispara uma segunda query paginada na coleção `resenha` filtrada por `livro_id`, mantendo o documento `livro` sempre abaixo do limite BSON.
+
+---
+
+### 3.3 — Computed
+
+**Documento `livro` com campos computados:**
+
+```json
+{
+  "_id": "livro_ocortico",
+  "title": "O Cortico",
+  "total_resenhas": 1284,
+  "soma_notas": 5393,
+  "nota_media": 4.2
+}
+```
+
+**`updateOne` com `$inc` executado a cada nova resenha (ex.: nota = 5):**
 
 ```js
-// Ao inserir nova resenha com nota `novaNota`:
 const novaNota = 5;
 
-// 1. Insere a resenha
-db.resenhas.insertOne({
-  livro_id: ObjectId("bbb000000000000000000001"),
-  livro_titulo: "Fundação",
-  usuario_id: ObjectId("aaa000000000000000000001"),
-  usuario_nome: "Ana Lima",
-  nota: novaNota,
-  texto: "Obra-prima absoluta.",
-  curtidas: 0,
-  data: new Date()
-});
+// $inc atualiza os acumuladores atomicamente
+db.livro.updateOne(
+  { _id: "livro_ocortico" },
+  { $inc: { total_resenhas: 1, soma_notas: novaNota } }
+);
 
-// 2. Atualiza os campos computados no livro
-// nota_media é recalculada: (media_atual * total + nova_nota) / (total + 1)
-// Para evitar divisão, mantemos soma_notas separada ou usamos $inc + recalculo periódico.
-// Abordagem simplificada com soma acumulada:
-db.livros.updateOne(
-  { _id: ObjectId("bbb000000000000000000001") },
-  {
-    $inc: {
-      total_resenhas: 1,
-      soma_notas: novaNota        // campo auxiliar para recalcular a média
-    },
-    $set: {
-      // nota_media = (soma_notas_anterior + nova_nota) / (total_resenhas_anterior + 1)
-      // Em produção isso seria calculado na camada de aplicação antes do $set
-      nota_media: 4.7             // valor atualizado pela aplicação
-    }
-  }
+// nota_media derivada dos acumuladores (sem drift de ponto flutuante)
+const doc = db.livro.findOne({ _id: "livro_ocortico" }, { soma_notas: 1, total_resenhas: 1 });
+db.livro.updateOne(
+  { _id: "livro_ocortico" },
+  { $set: { nota_media: Math.round(doc.soma_notas / doc.total_resenhas * 100) / 100 } }
 );
 ```
 
-**Justificativa:** A nota média e o total de resenhas são lidos em toda listagem de livros (home, busca, recomendações) — recalcular via `aggregate` a cada requisição seria custoso. Pagar o custo extra na escrita (uma operação rara comparada à leitura) mantém as leituras rápidas e sem agregação. O campo `soma_notas` permite recalcular a média exata a qualquer momento sem precisar somar todas as resenhas.
+`nota_media` e `total_resenhas` são lidos em toda listagem de livros — recalcular via `aggregate` seria O(n) por requisição. Com Computed, a leitura é O(1). O `$inc` em `soma_notas` e `total_resenhas` é atômico e, por trabalhar com inteiros, evita acúmulo de erros de ponto flutuante que a fórmula de média incremental `(avg * n + nova) / (n+1)` sofre após milhares de atualizações.
 
 ---
 
-### 3.4 — Outlier Pattern
+### 3.4 — Outlier
 
-**Problema escolhido:** usuário com milhões de seguidores.
+**Problema escolhido:** usuário com milhões de seguidores na rede de leitura.
 
-Na coleção de ligação `seguidores`, um usuário muito popular geraria milhões de documentos com `followed_id` apontando para ele — o que é perfeitamente suportado pela coleção de ligação. Porém, se a aplicação precisar **cache rápido** de seguidores (ex.: verificar "este usuário me segue?" sem query), a abordagem de array no documento do usuário reaparece como tentação. O Outlier Pattern resolve mantendo um array de `seguidores_ids` no documento do usuário para os **primeiros N seguidores** (ex.: 1000), e, quando esse array fica cheio, setando um flag `has_overflow_followers: true` e criando documentos extras em `seguidores_overflow`:
+**Usuário comum (caso normal):**
 
 ```json
-// Documento do usuário popular
 {
-  "_id": ObjectId("aaa000000000000000000001"),
+  "_id": "usuario_ana",
   "nome": "Ana Lima",
-  "seguidores_ids": ["...primeiros 1000 IDs..."],
-  "has_overflow_followers": true,
-  "total_seguidores": 2847392
-}
-
-// Documentos de overflow
-{
-  "_id": ObjectId("hhh000000000000000000001"),
-  "followed_id": ObjectId("aaa000000000000000000001"),
-  "seguidores_ids": ["...próximos 1000 IDs..."],
-  "pagina": 2
+  "seguidores": ["usuario_bob", "usuario_carlos"],
+  "seguidores_count": 2,
+  "has_extras": false
 }
 ```
 
-**Justificativa:** Para 99,9% dos usuários, o array no documento principal basta e elimina qualquer join. Para os outliers (celebridades, autores famosos), o flag `has_overflow_followers` avisa a aplicação que ela precisa consultar os documentos de overflow — tratando o caso excepcional com código especial sem penalizar o caso comum. Isso evita que o schema inteiro seja dimensionado para o pior caso.
+**Usuário viral (outlier) — os 100 mais recentes embutidos, restante em coleção dedicada:**
+
+```json
+{
+  "_id": "usuario_clarice",
+  "nome": "Clarice Lispector Fan Page",
+  "seguidores": ["usuario_401", "...", "usuario_500"],
+  "seguidores_count": 850000,
+  "has_extras": true
+}
+```
+
+**Documento na coleção `seguidores_extras`:**
+
+```json
+{ "usuario_id": "usuario_clarice", "seguidor_id": "usuario_1", "data": "2024-01-01" }
+```
+
+O Outlier evita que o caso excepcional (celebridade/autor famoso) force uma arquitetura pesada para todos os usuários: 99,9% dos usuários têm o array `seguidores` embutido e não pagam custo extra. Para os outliers, o flag `has_extras: true` avisa a aplicação para buscar o restante em `seguidores_extras`, tornando o caso excepcional transparente para os demais.

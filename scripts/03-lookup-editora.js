@@ -1,38 +1,26 @@
-// Parte 2.2a — Livros com nome e cidade da editora
-// Usa $lookup + $unwind + $project para enriquecer os documentos de livro
-// com os dados da editora referenciada.
-//
-// Saída esperada: { title, editora (nome), cidade }
-//
-// Executar:
-//   docker exec -i aula08-mongo mongosh livraria < scripts/03-lookup-editora.js
+// Parte 2.2a — $lookup basico: livros com nome e cidade da editora
+// Pre-requisito: scripts/02-enriquecer-dataset.js
+// Uso: docker exec -i aula08-mongo mongosh < scripts/03-lookup-editora.js
 
-use("livraria");
+const db = db.getSiblingDB("livraria");
 
-print("=== Livros com nome e cidade da editora ===\n");
-
-const resultado = db.livro.aggregate([
-  {
-    $lookup: {
+print("\n=== Lista de todos os livros com nome e cidade da editora ===");
+// $lookup faz left outer join: livro.editora (ObjectId) -> editora._id
+// $unwind achata o array "ed" (resultado de $lookup e sempre array, mesmo em 1:1)
+// $project seleciona apenas os campos pedidos na atividade
+printjson(db.livro.aggregate([
+  { $lookup: {
       from: "editora",
-      localField: "editora",      // campo em livro que guarda o ObjectId da editora
+      localField: "editora",
       foreignField: "_id",
-      as: "editora_info"
-    }
-  },
-  {
-    $unwind: "$editora_info"      // $lookup sempre retorna array; $unwind o achata para objeto
-  },
-  {
-    $project: {
+      as: "ed"
+  } },
+  { $unwind: "$ed" },
+  { $project: {
       _id: 0,
-      title: "$titulo",
-      editora: "$editora_info.nome",
-      cidade: "$editora_info.cidade"
-    }
-  }
-]).toArray();
-
-resultado.forEach(doc => printjson(doc));
-
-print(`\nTotal: ${resultado.length} livro(s)`);
+      title: 1,
+      editora: "$ed.nome",
+      cidade: "$ed.cidade"
+  } }
+]).toArray());
+// Saida esperada: 7 documentos com { title, editora, cidade }
