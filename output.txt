@@ -1,0 +1,383 @@
+! docker exec -i aula08-mongo mongosh < scripts/01-seed-livraria.js
+  ! docker exec -i aula08-mongo mongosh < scripts/02-enriquecer-dataset.js
+  ! docker exec -i aula08-mongo mongosh < scripts/03-lookup-editora.js
+  ! docker exec -i aula08-mongo mongosh < scripts/04-lookup-autores.js
+Current Mongosh Log ID: 6a1cb6f92bedf8b9b89df8a2
+Connecting to:          mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.8.3
+Using MongoDB:          8.0.23
+Using Mongosh:          2.8.3
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+
+To help improve our products, anonymous usage data is collected and sent to MongoDB periodically (https://www.mongodb.com/legal/privacy-policy).
+You can opt-out by running the disableTelemetry() command.
+
+------
+   The server generated these startup warnings when booting
+   2026-05-31T22:31:56.089+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+   2026-05-31T22:31:56.333+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+   2026-05-31T22:31:56.333+00:00: Soft rlimits for open file descriptors too low
+   2026-05-31T22:31:56.333+00:00: For customers running the current memory allocator, we suggest changing the contents of the following sysfsFile
+   2026-05-31T22:31:56.333+00:00: We suggest setting the contents of sysfsFile to 0.
+   2026-05-31T22:31:56.333+00:00: We suggest setting swappiness to 0 or 1, as swapping can cause performance problems.
+------
+
+test> 
+test> 
+test> 
+test> 
+test> 
+test> 
+test> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+=== 1. Editoras — geram _id que os livros vao referenciar ===
+
+livraria> | | | | 
+livraria> {
+  '0': ObjectId('6a1cb6f92bedf8b9b89df8a3'),
+  '1': ObjectId('6a1cb6f92bedf8b9b89df8a4'),
+  '2': ObjectId('6a1cb6f92bedf8b9b89df8a5')
+}
+
+livraria> 
+livraria> 
+=== 2. Autores (N..N com livros) ===
+
+livraria> | | | | 
+livraria> {
+  '0': ObjectId('6a1cb6f92bedf8b9b89df8a6'),
+  '1': ObjectId('6a1cb6f92bedf8b9b89df8a7'),
+  '2': ObjectId('6a1cb6f92bedf8b9b89df8a8')
+}
+
+livraria> 
+livraria> 
+=== 3. Livros REFERENCIANDO editora e autores pelo _id (FK manual) ===
+
+livraria> | | | | | | | {
+  acknowledged: true,
+  insertedIds: {
+    '0': ObjectId('6a1cb6f92bedf8b9b89df8a9'),
+    '1': ObjectId('6a1cb6f92bedf8b9b89df8aa'),
+    '2': ObjectId('6a1cb6f92bedf8b9b89df8ab')
+  }
+}
+livraria> [
+  {
+    _id: ObjectId('6a1cb6f92bedf8b9b89df8a9'),
+    title: 'MongoDB in Action',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a3')
+  },
+  {
+    _id: ObjectId('6a1cb6f92bedf8b9b89df8aa'),
+    title: 'MongoDB: The Definitive Guide',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a5')
+  },
+  {
+    _id: ObjectId('6a1cb6f92bedf8b9b89df8ab'),
+    title: 'Contos da Paraiba',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a4')
+  }
+]
+
+livraria> 
+livraria> 
+Resumo do banco 'livraria':
+
+livraria> | |   editora: 3 docs
+  autor: 3 docs
+  livro: 3 docs
+
+livraria> 
+Seed concluido. Rode os proximos scripts (02..05).
+
+livraria> 
+livraria> Current Mongosh Log ID:       6a1cb6fada4243062d9df8a2
+Connecting to:          mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.8.3
+Using MongoDB:          8.0.23
+Using Mongosh:          2.8.3
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+------
+   The server generated these startup warnings when booting
+   2026-05-31T22:31:56.089+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+   2026-05-31T22:31:56.333+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+   2026-05-31T22:31:56.333+00:00: Soft rlimits for open file descriptors too low
+   2026-05-31T22:31:56.333+00:00: For customers running the current memory allocator, we suggest changing the contents of the following sysfsFile
+   2026-05-31T22:31:56.333+00:00: We suggest setting the contents of sysfsFile to 0.
+   2026-05-31T22:31:56.333+00:00: We suggest setting swappiness to 0 or 1, as swapping can cause performance problems.
+------
+
+test> 
+test> 
+test> 
+test> 
+test> 
+livraria> 
+livraria> 
+livraria> | | | | | 
+livraria> { acknowledged: true, deletedCount: 0 }
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> | | 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> | | 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+livraria> 
+=== Inserindo 4 novos livros ===
+
+livraria> | | | | | | | | | | | | | | | | | | | | | | | | | {
+  acknowledged: true,
+  insertedIds: {
+    '0': ObjectId('6a1cb6fbda4243062d9df8a3'),
+    '1': ObjectId('6a1cb6fbda4243062d9df8a4'),
+    '2': ObjectId('6a1cb6fbda4243062d9df8a5'),
+    '3': ObjectId('6a1cb6fbda4243062d9df8a6')
+  }
+}
+livraria> 
+livraria> Total de livros: 7
+
+livraria> 
+livraria> 
+Todos os livros (title + editora_id + autores_ids):
+
+livraria> [
+  {
+    _id: ObjectId('6a1cb6f92bedf8b9b89df8a9'),
+    title: 'MongoDB in Action',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a3'),
+    autores: [
+      ObjectId('6a1cb6f92bedf8b9b89df8a6')
+    ]
+  },
+  {
+    _id: ObjectId('6a1cb6f92bedf8b9b89df8aa'),
+    title: 'MongoDB: The Definitive Guide',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a5'),
+    autores: [
+      ObjectId('6a1cb6f92bedf8b9b89df8a7'),
+      ObjectId('6a1cb6f92bedf8b9b89df8a8')
+    ]
+  },
+  {
+    _id: ObjectId('6a1cb6f92bedf8b9b89df8ab'),
+    title: 'Contos da Paraiba',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a4'),
+    autores: []
+  },
+  {
+    _id: ObjectId('6a1cb6fbda4243062d9df8a3'),
+    title: 'Padroes de Projeto com MongoDB',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a3'),
+    autores: [
+      ObjectId('6a1cb6f92bedf8b9b89df8a6'),
+      ObjectId('6a1cb6f92bedf8b9b89df8a7')
+    ]
+  },
+  {
+    _id: ObjectId('6a1cb6fbda4243062d9df8a4'),
+    title: 'MongoDB: Guia Pratico',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a3'),
+    autores: [
+      ObjectId('6a1cb6f92bedf8b9b89df8a8')
+    ]
+  },
+  {
+    _id: ObjectId('6a1cb6fbda4243062d9df8a5'),
+    title: 'NoSQL Distilled',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a5'),
+    autores: [
+      ObjectId('6a1cb6f92bedf8b9b89df8a7')
+    ]
+  },
+  {
+    _id: ObjectId('6a1cb6fbda4243062d9df8a6'),
+    title: 'Contos do Agreste',
+    editora: ObjectId('6a1cb6f92bedf8b9b89df8a4'),
+    autores: [
+      ObjectId('6a1cb6f92bedf8b9b89df8a6')
+    ]
+  }
+]
+
+livraria> Current Mongosh Log ID:       6a1cb6fba6946a22299df8a2
+Connecting to:          mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.8.3
+Using MongoDB:          8.0.23
+Using Mongosh:          2.8.3
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+------
+   The server generated these startup warnings when booting
+   2026-05-31T22:31:56.089+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+   2026-05-31T22:31:56.333+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+   2026-05-31T22:31:56.333+00:00: Soft rlimits for open file descriptors too low
+   2026-05-31T22:31:56.333+00:00: For customers running the current memory allocator, we suggest changing the contents of the following sysfsFile
+   2026-05-31T22:31:56.333+00:00: We suggest setting the contents of sysfsFile to 0.
+   2026-05-31T22:31:56.333+00:00: We suggest setting swappiness to 0 or 1, as swapping can cause performance problems.
+------
+
+test> 
+test> 
+test> 
+test> 
+test> 
+livraria> 
+livraria> 
+=== Lista de todos os livros com nome e cidade da editora ===
+
+livraria> 
+livraria> 
+livraria> 
+livraria> | | | | | | | | | | | | | | [
+  {
+    title: 'MongoDB in Action',
+    editora: 'Manning',
+    cidade: 'Shelter Island'
+  },
+  {
+    title: 'MongoDB: The Definitive Guide',
+    editora: "O'Reilly",
+    cidade: 'Sebastopol'
+  },
+  {
+    title: 'Contos da Paraiba',
+    editora: 'Magica',
+    cidade: 'Joao Pessoa'
+  },
+  {
+    title: 'Padroes de Projeto com MongoDB',
+    editora: 'Manning',
+    cidade: 'Shelter Island'
+  },
+  {
+    title: 'MongoDB: Guia Pratico',
+    editora: 'Manning',
+    cidade: 'Shelter Island'
+  },
+  {
+    title: 'NoSQL Distilled',
+    editora: "O'Reilly",
+    cidade: 'Sebastopol'
+  },
+  {
+    title: 'Contos do Agreste',
+    editora: 'Magica',
+    cidade: 'Joao Pessoa'
+  }
+]
+
+livraria> 
+livraria> Current Mongosh Log ID:       6a1cb6fc496d7a9e619df8a2
+Connecting to:          mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.8.3
+Using MongoDB:          8.0.23
+Using Mongosh:          2.8.3
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+------
+   The server generated these startup warnings when booting
+   2026-05-31T22:31:56.089+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+   2026-05-31T22:31:56.333+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+   2026-05-31T22:31:56.333+00:00: Soft rlimits for open file descriptors too low
+   2026-05-31T22:31:56.333+00:00: For customers running the current memory allocator, we suggest changing the contents of the following sysfsFile
+   2026-05-31T22:31:56.333+00:00: We suggest setting the contents of sysfsFile to 0.
+   2026-05-31T22:31:56.333+00:00: We suggest setting swappiness to 0 or 1, as swapping can cause performance problems.
+------
+
+test> 
+test> 
+test> 
+test> 
+test> 
+livraria> 
+livraria> 
+=== Livros com lista de nomes dos autores (N:N via $lookup) ===
+
+livraria> 
+livraria> 
+livraria> | | | | | | | | | | | | [
+  {
+    title: 'MongoDB in Action',
+    autores_doc: [
+      {
+        nome: 'Kyle Banker'
+      }
+    ]
+  },
+  {
+    title: 'MongoDB: The Definitive Guide',
+    autores_doc: [
+      {
+        nome: 'Shannon Bradshaw'
+      },
+      {
+        nome: 'Kristina Chodorow'
+      }
+    ]
+  },
+  {
+    title: 'Contos da Paraiba',
+    autores_doc: []
+  },
+  {
+    title: 'Padroes de Projeto com MongoDB',
+    autores_doc: [
+      {
+        nome: 'Shannon Bradshaw'
+      },
+      {
+        nome: 'Kyle Banker'
+      }
+    ]
+  },
+  {
+    title: 'MongoDB: Guia Pratico',
+    autores_doc: [
+      {
+        nome: 'Kristina Chodorow'
+      }
+    ]
+  },
+  {
+    title: 'NoSQL Distilled',
+    autores_doc: [
+      {
+        nome: 'Shannon Bradshaw'
+      }
+    ]
+  },
+  {
+    title: 'Contos do Agreste',
+    autores_doc: [
+      {
+        nome: 'Kyle Banker'
+      }
+    ]
+  }
+]
+
+livraria> 
+livraria> 
+livraria> 
+livraria>
