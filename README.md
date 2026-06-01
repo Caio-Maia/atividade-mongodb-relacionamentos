@@ -41,7 +41,7 @@ UI para inspeção: http://localhost:8081 (`admin`/`admin`)
 | `resenha` | Coleção separada; referencia `livro` e `usuario` |
 | `segue` | Coleção de ligação para o grafo de seguidores |
 
-> Não há coleção separada para `comentario` nem para `estante` — ambos ficam embutidos nos seus documentos pai (justificativas abaixo).
+> Não há coleção separada para `comentario` nem para `estante` pois ambos ficam embutidos nos seus documentos pai (justificativas abaixo).
 
 ---
 
@@ -135,7 +135,7 @@ Comentários fazem sentido apenas no contexto da resenha e são sempre exibidos 
 
 **(c) Livro ↔ resenhas — `REFERÊNCIA` (coleção `resenha`)**
 
-Um best-seller pode acumular centenas de milhares de resenhas. Embutir todas dentro do documento `livro` estouraria rapidamente o limite BSON de 16 MB. Além disso, cada resenha possui ciclo de vida próprio — recebe curtidas, comentários e pode ser editada — tornando a atualização de documentos embutidos cara e sujeita a conflitos. A coleção separada permite paginação eficiente e escala linearmente.
+Um best-seller pode acumular centenas de milhares de resenhas. Embutir todas dentro do documento `livro` estouraria rapidamente o limite BSON de 16 MB. Além disso, cada resenha possui ciclo de vida próprio recebendo curtidas, comentários e pode ser editada, tornando a atualização de documentos embutidos cara e sujeita a conflitos. A coleção separada permite paginação eficiente e escala linearmente.
 
 **(d) Usuário ↔ livros nas estantes — `EMBED` (dentro de `usuario`)**
 
@@ -153,7 +153,7 @@ Para o item (c) — Livro ↔ resenhas:
 
 **Livro comum** (dezenas de resenhas): a tela principal do livro pode embutir as 3 mais recentes diretamente no documento `livro` (campo `resenhas_top`), evitando um `$lookup` no hot path. O restante fica na coleção `resenha`, consultada apenas na tela "ver todas".
 
-**Best-seller** (centenas de milhares de resenhas): embutir qualquer quantidade de resenhas no documento do livro é inviável — o documento cresceria até estourar os 16 MB. Toda leitura de resenhas vem da coleção separada, com paginação.
+**Best-seller** (centenas de milhares de resenhas): embutir qualquer quantidade de resenhas no documento do livro é inviável, o documento cresceria até estourar os 16 MB. Toda leitura de resenhas vem da coleção separada, com paginação.
 
 O padrão que resolve o segundo caso é o **Subset Pattern**: o documento `livro` carrega apenas `resenhas_top` (subconjunto quente) e um contador `resenhas_count`. A tela de listagem principal não precisa de query extra; somente "ver todas" dispara uma segunda query na coleção `resenha`. Dessa forma, o tamanho do documento `livro` é sempre limitado, independente do sucesso do livro.
 
@@ -163,7 +163,7 @@ O padrão que resolve o segundo caso é o **Subset Pattern**: o documento `livro
 
 A melhor solução é uma **coleção de ligação** `segue { seguidor_id, seguido_id, data }` com índice composto nos dois campos.
 
-- **Outliers**: um usuário com milhões de seguidores não infla o documento de ninguém — cada aresta é um documento pequeno e independente. Guardar um array de IDs dentro do `usuario` seguido chegaria rapidamente a dezenas de MB, estourando o limite BSON.
+- **Outliers**: um usuário com milhões de seguidores não infla o documento de ninguém pois cada aresta é um documento pequeno e independente. Guardar um array de IDs dentro do `usuario` seguido chegaria rapidamente a dezenas de MB, estourando o limite BSON.
 - **"Quem eu sigo"**: `db.segue.find({ seguidor_id: meuId })` — índice em `seguidor_id` resolve em O(log n).
 - **"Quem me segue"**: `db.segue.find({ seguido_id: meuId })` — índice em `seguido_id` resolve em O(log n).
 - **Sincronização**: existe apenas um documento por aresta; não há dois arrays para manter coerentes. Uma exclusão de seguimento é um único `deleteOne` na coleção `segue`, sem risco de inconsistência.
@@ -187,7 +187,7 @@ mongosh 2.8.3) — rode os comandos da seção [Como executar](#como-executar) p
 ### 2.1 — Enriquecer o dataset (`02-enriquecer-dataset.js`)
 
 Insere **4 novos livros** (`insertMany`), recuperando os `_id` das editoras e
-autores existentes por nome (`findOne`) — ou seja, **FK manual** por referência:
+autores existentes por nome (`findOne`), ou seja, **FK manual** por referência:
 
 - **2+ autores (N:N):** *Padroes de Projeto com MongoDB* → `[Kyle Banker, Shannon Bradshaw]`;
 - **2 livros na mesma editora:** *Padroes de Projeto com MongoDB* e *MongoDB: Guia Pratico*, ambos da `Manning`.
@@ -220,26 +220,26 @@ Resultado esperado — 7 documentos:
 ### 2.2b — `$lookup` N:N: autores de cada livro (`04-lookup-autores.js`)
 
 Como `localField` (`autores`) é um **array de `ObjectId`**, o `$lookup` resolve cada
-elemento e devolve um array de autores — sem precisar de `$unwind`. O `$project`
-mantém só `title` e `autores_doc.nome`. Resultado esperado — 7 documentos:
+elemento e devolve um array de autores sem precisar de `$unwind`. O `$project`
+mantém só `title` e `autores_doc.nome`. Resultado esperado 7 documentos:
 
 | title | autores |
 |---|---|
 | MongoDB in Action | Kyle Banker |
 | MongoDB: The Definitive Guide | Shannon Bradshaw, Kristina Chodorow |
-| Contos da Paraiba | *(vazio — `autores: []` no seed)* |
+| Contos da Paraiba | *(vazio: `autores: []` no seed)* |
 | Padroes de Projeto com MongoDB | Shannon Bradshaw, Kyle Banker |
 | MongoDB: Guia Pratico | Kristina Chodorow |
 | NoSQL Distilled | Shannon Bradshaw |
 | Contos do Agreste | Kyle Banker |
 
 > *Padroes de Projeto com MongoDB* aparece com **2 nomes** (N:N resolvido) e
-> *Contos da Paraiba* com lista **vazia** — confirmando o comportamento de
+> *Contos da Paraiba* com lista **vazia** confirmando o comportamento de
 > *left outer join* do `$lookup`.
 >
 > **Observação:** em *Padroes de Projeto com MongoDB* o array foi inserido como
 > `[Kyle Banker, Shannon Bradshaw]`, mas o `$lookup` retornou
-> `[Shannon Bradshaw, Kyle Banker]` — o `$lookup` **não preserva a ordem** do array
+> `[Shannon Bradshaw, Kyle Banker]`, o `$lookup` **não preserva a ordem** do array
 > `localField` (ordena pelo lado de `from`). Se a ordem importar, ela precisa ser
 > reconstruída no pipeline (ex.: `$map` sobre `autores` casando por `_id`).
 
@@ -250,7 +250,7 @@ mantém só `title` e `autores_doc.nome`. Resultado esperado — 7 documentos:
 Script: `scripts/05-patterns.js` (banco `rede_leitura`).
 
 > Nos exemplos abaixo, `_id` e as referências (`livro_id`, `usuario_id`,
-> `seguidor_id`) usam `ObjectId` — o mesmo tipo da Parte 1. Os valores mostrados
+> `seguidor_id`) usam `ObjectId`, o mesmo tipo da Parte 1. Os valores mostrados
 > (ex.: `ObjectId("664a...0001")`) são ilustrativos; o script gera os `ObjectId`
 > em tempo de execução e os reutiliza para manter as referências consistentes.
 
@@ -277,7 +277,7 @@ Script: `scripts/05-patterns.js` (banco `rede_leitura`).
 }
 ```
 
-`livro_titulo` e `usuario_nome` são estáveis o suficiente: títulos de livros não mudam após publicação, e nomes de exibição raramente são alterados — se mudarem, um `updateMany` propaga a correção em batch, custo aceitável para eventos raros. Campo **não duplicado**: `nota_media` do livro muda a cada nova resenha; propagá-la em cada escrita de resenha seria custoso e propenso a inconsistências.
+`livro_titulo` e `usuario_nome` são estáveis o suficiente: títulos de livros não mudam após publicação, e nomes de exibição raramente são alterados, se mudarem, um `updateMany` propaga a correção em batch, custo aceitável para eventos raros. Campo **não duplicado**: `nota_media` do livro muda a cada nova resenha; propagá-la em cada escrita de resenha seria custoso e propenso a inconsistências.
 
 ---
 
@@ -300,7 +300,7 @@ Script: `scripts/05-patterns.js` (banco `rede_leitura`).
 }
 ```
 
-A tela principal do livro carrega as 3 resenhas embutidas em uma única query — sem `$lookup` e sem custo extra, independente do total de resenhas. A tela "ver todas as resenhas" dispara uma segunda query paginada na coleção `resenha` filtrada por `livro_id`, mantendo o documento `livro` sempre abaixo do limite BSON.
+A tela principal do livro carrega as 3 resenhas embutidas em uma única query, sem `$lookup` e sem custo extra, independente do total de resenhas. A tela "ver todas as resenhas" dispara uma segunda query paginada na coleção `resenha` filtrada por `livro_id`, mantendo o documento `livro` sempre abaixo do limite BSON.
 
 ---
 
@@ -338,7 +338,7 @@ db.livro.updateOne(
 );
 ```
 
-`nota_media` e `total_resenhas` são lidos em toda listagem de livros — recalcular via `aggregate` seria O(n) por requisição. Com Computed, a leitura é O(1). O `$inc` em `soma_notas` e `total_resenhas` é atômico e, por trabalhar com inteiros, evita acúmulo de erros de ponto flutuante que a fórmula de média incremental `(avg * n + nova) / (n+1)` sofre após milhares de atualizações.
+`nota_media` e `total_resenhas` são lidos em toda listagem de livros, recalcular via `aggregate` seria O(n) por requisição. Com Computed, a leitura é O(1). O `$inc` em `soma_notas` e `total_resenhas` é atômico e, por trabalhar com inteiros, evita acúmulo de erros de ponto flutuante que a fórmula de média incremental `(avg * n + nova) / (n+1)` sofre após milhares de atualizações.
 
 ---
 
